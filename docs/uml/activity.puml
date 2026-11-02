@@ -1,0 +1,90 @@
+@startuml activity
+title COLORS Web Application - Activity Diagram
+skinparam shadowing false
+
+|User|
+start
+:Open index.html;
+:Enter username and password;
+:Click "Do It";
+
+|Browser (code.js)|
+:doLogin(): read loginName, loginPassword;
+:POST JSON {login, password}\nto /LAMPAPI/Login.php;
+
+|Server (PHP + MySQL)|
+:Login.php: connect to MySQL\n(settings from db_config.php);
+if (Connected?) then (no)
+  :returnWithError(connect_error)\n{id: 0, error};
+else (yes)
+  :SELECT ID, firstName, lastName FROM Users\nWHERE Login = ? AND Password = ?;
+  if (Row found?) then (yes)
+    :returnWithInfo(firstName, lastName, id);
+  else (no)
+    :returnWithError("No Records Found")\n{id: 0, error};
+  endif
+endif
+
+|Browser (code.js)|
+if (id < 1?) then (yes)
+  :Show "User/Password combination\nincorrect" in loginResult;
+  stop
+else (no)
+  :Store userId, firstName, lastName;
+  :saveCookie() (expires in 20 minutes);
+  :Redirect to color.html;
+endif
+
+:DOMContentLoaded -> readCookie();
+if (userId found in cookie?) then (no)
+  :Redirect to index.html;
+  stop
+else (yes)
+endif
+
+|User|
+repeat
+  :Choose an action;
+  switch (Action?)
+  case (Add Color)
+    :Enter color in colorText,\nclick "Add Color";
+    |Browser (code.js)|
+    :addColor(): POST JSON {color, userId}\nto /LAMPAPI/AddColor.php;
+    |Server (PHP + MySQL)|
+    :INSERT INTO Colors (UserId, Name)\nVALUES (?, ?);
+    :returnWithError(empty string)
+-> JSON with empty error;
+    |Browser (code.js)|
+    :Show "Color has been added"\nin colorAddResult;
+  case (Search Colors)
+    |User|
+    :Enter text in searchText,\nclick "Search Color";
+    |Browser (code.js)|
+    :searchColor(): POST JSON {search, userId}\nto /LAMPAPI/SearchColors.php;
+    |Server (PHP + MySQL)|
+    :SELECT Name FROM Colors\nWHERE Name LIKE %search% AND UserID = ?;
+    if (Any rows?) then (yes)
+      :returnWithInfo() {results: [...]};
+    else (no)
+      :returnWithError("No Records Found");
+    endif
+    |Browser (code.js)|
+    :Show "Color(s) has been retrieved";
+    :Write each result into colorList (<p>);
+note right
+  If no rows were found, the response has
+  no "results" array, so the list is not
+  updated (code.js does not check "error").
+end note
+  case (Log Out)
+    |User|
+    :Click "Log Out";
+    |Browser (code.js)|
+    :doLogout(): reset userId, firstName,\nlastName and expire cookie;
+    :Redirect to index.html;
+    stop
+  endswitch
+  |User|
+repeat while (Do another action?) is (yes)
+stop
+@enduml
