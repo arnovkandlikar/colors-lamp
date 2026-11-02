@@ -1,0 +1,127 @@
+@startuml class
+title COLORS Web Application - Class Diagram
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+
+package "Front End" {
+  class "index.html" as IndexPage <<page>> {
+    loginName : text input
+    loginPassword : password input
+    loginButton : button
+    loginResult : span
+    --
+    loginButton.onclick -> doLogin()
+  }
+
+  class "color.html" as ColorPage <<page>> {
+    userName : span
+    logoutButton : button
+    searchText : text input
+    searchColorButton : button
+    colorSearchResult : span
+    colorList : p
+    colorText : text input
+    addColorButton : button
+    colorAddResult : span
+    --
+    DOMContentLoaded -> readCookie()
+    logoutButton.onclick -> doLogout()
+    searchColorButton.onclick -> searchColor()
+    addColorButton.onclick -> addColor()
+  }
+
+  class "code.js" as CodeJS <<script>> {
+    {static} urlBase : const String = "/LAMPAPI"
+    {static} extension : const String = "php"
+    userId : int = 0
+    firstName : String = ""
+    lastName : String = ""
+    --
+    + doLogin() : void
+    + saveCookie() : void
+    + readCookie() : void
+    + doLogout() : void
+    + addColor() : void
+    + searchColor() : void
+  }
+
+  class "md5.js" as MD5 <<script>> {
+    + md5(string, key, raw) : String
+  }
+  note bottom of MD5 : Loaded by index.html but\nnot called (hashing is\ncommented out in doLogin)
+}
+
+package "Back End: LAMPAPI (PHP)" {
+  class "db_config.php" as DBConfig <<config>> {
+    DB_HOST : const
+    DB_USER : const
+    DB_PASS : const
+    DB_NAME : const
+  }
+  note bottom of DBConfig : Created from db_config.example.php\n(git-ignored)
+
+  class "Login.php" as LoginAPI <<endpoint>> {
+    request : {login, password}
+    response : {id, firstName, lastName, error}
+    --
+    getRequestInfo() : array
+    sendResultInfoAsJson(obj) : void
+    returnWithError(err) : void
+    returnWithInfo(firstName, lastName, id) : void
+  }
+
+  class "AddColor.php" as AddColorAPI <<endpoint>> {
+    request : {color, userId}
+    response : {error}
+    --
+    getRequestInfo() : array
+    sendResultInfoAsJson(obj) : void
+    returnWithError(err) : void
+  }
+
+  class "SearchColors.php" as SearchColorsAPI <<endpoint>> {
+    request : {search, userId}
+    response : {results[], error}
+    --
+    getRequestInfo() : array
+    sendResultInfoAsJson(obj) : void
+    returnWithError(err) : void
+    returnWithInfo(searchResults) : void
+  }
+}
+
+package "Database (MySQL)" {
+  class Users <<table>> {
+    ID : INT <<PK, auto increment>>
+    firstName : VARCHAR(100)
+    lastName : VARCHAR(100)
+    Login : VARCHAR(100) <<unique>>
+    Password : VARCHAR(255)
+  }
+
+  class Colors <<table>> {
+    ID : INT <<PK, auto increment>>
+    UserId : INT <<FK>>  (references Users.ID)
+    Name : VARCHAR(255)
+  }
+}
+
+IndexPage ..> CodeJS : <<loads>>
+IndexPage ..> MD5 : <<loads>>
+ColorPage ..> CodeJS : <<loads>>
+
+CodeJS ..> LoginAPI : POST JSON (XMLHttpRequest)
+CodeJS ..> AddColorAPI : POST JSON (XMLHttpRequest)
+CodeJS ..> SearchColorsAPI : POST JSON (XMLHttpRequest)
+
+LoginAPI ..> DBConfig : <<require_once>>
+AddColorAPI ..> DBConfig : <<require_once>>
+SearchColorsAPI ..> DBConfig : <<require_once>>
+
+LoginAPI ..> Users : SELECT
+AddColorAPI ..> Colors : INSERT
+SearchColorsAPI ..> Colors : SELECT ... LIKE
+
+Users "1" -- "0..*" Colors : owns >
+@enduml
