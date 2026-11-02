@@ -1,0 +1,45 @@
+@startuml usecase
+title COLORS Web Application - Use Case Diagram
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "User" as User
+actor "MySQL Database" as DB <<system>>
+
+rectangle "COLORS Web Application" {
+  usecase "Log In" as UC_Login
+  usecase "Validate Credentials" as UC_Validate
+  usecase "Show Login Error" as UC_LoginErr
+  usecase "Add Color" as UC_Add
+  usecase "Search Colors" as UC_Search
+  usecase "Check Session\n(read cookie)" as UC_Session
+  usecase "Log Out" as UC_Logout
+}
+
+User --> UC_Login
+User --> UC_Add
+User --> UC_Search
+User --> UC_Logout
+
+UC_Login ..> UC_Validate : <<include>>
+UC_LoginErr ..> UC_Login : <<extend>>\n[login/password incorrect]
+UC_Add ..> UC_Session : <<include>>
+UC_Search ..> UC_Session : <<include>>
+
+UC_Validate --> DB
+UC_Add --> DB
+UC_Search --> DB
+
+note bottom of UC_Session
+  color.html calls readCookie() on load;
+  if no userId cookie, the user is
+  redirected back to index.html.
+end note
+
+note top of UC_Login
+  Accounts must already exist in the
+  Users table (no registration,
+  no edit or delete of colors).
+end note
+@enduml
