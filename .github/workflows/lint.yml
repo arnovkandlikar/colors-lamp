@@ -1,0 +1,35 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint HTML, CSS, and JavaScript
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (linting tools only)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install linters
+        run: npm ci
+
+      - name: Lint HTML (HTMLHint)
+        run: npm run lint:html
+
+      # Run every linter even if an earlier one fails, so one run shows all problems
+      - name: Lint CSS (Stylelint)
+        if: success() || failure()
+        run: npm run lint:css
+
+      - name: Lint JavaScript (ESLint)
+        if: success() || failure()
+        run: npm run lint:js

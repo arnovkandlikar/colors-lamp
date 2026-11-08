@@ -14,3 +14,6 @@ Thumbs.db
 # Logs and database dumps
 *.log
 *.sql
+
+# Node tooling (linters only)
+node_modules/
